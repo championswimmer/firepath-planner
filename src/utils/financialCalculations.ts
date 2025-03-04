@@ -126,22 +126,37 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
     const calculatedSavings = pastProjections[lastIndex].savings;
     const calculatedInvestments = pastProjections[lastIndex].investments;
     
-    // Only adjust if there's a significant difference
-    if (Math.abs(calculatedSavings - currentSavings) > 0.01) {
-      const savingsRatio = calculatedSavings > 0 ? currentSavings / calculatedSavings : 1;
+    // Only adjust if there's a significant difference and we have non-zero calculated values
+    if (Math.abs(calculatedSavings - currentSavings) > 0.01 && calculatedSavings > 0) {
+      const savingsRatio = currentSavings / calculatedSavings;
       
       // Apply adjustment factor to all past savings values
       pastProjections.forEach(entry => {
         entry.savings *= savingsRatio;
       });
+    } else if (calculatedSavings <= 0 && currentSavings > 0) {
+      // If calculated is zero but current is not, create a linear growth
+      const totalYears = currentYear - firstEarningYear + 1;
+      pastProjections.forEach((entry, index) => {
+        // Linear growth from 0 to current value
+        const yearProgress = index / lastIndex;
+        entry.savings = currentSavings * yearProgress;
+      });
     }
     
-    if (Math.abs(calculatedInvestments - currentInvestments) > 0.01) {
-      const investmentsRatio = calculatedInvestments > 0 ? currentInvestments / calculatedInvestments : 1;
+    if (Math.abs(calculatedInvestments - currentInvestments) > 0.01 && calculatedInvestments > 0) {
+      const investmentsRatio = currentInvestments / calculatedInvestments;
       
       // Apply adjustment factor to all past investment values
       pastProjections.forEach(entry => {
         entry.investments *= investmentsRatio;
+      });
+    } else if (calculatedInvestments <= 0 && currentInvestments > 0) {
+      // If calculated is zero but current is not, create a linear growth
+      pastProjections.forEach((entry, index) => {
+        // Linear growth from 0 to current value
+        const yearProgress = index / lastIndex;
+        entry.investments = currentInvestments * yearProgress;
       });
     }
   }
