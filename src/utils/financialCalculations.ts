@@ -45,7 +45,7 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
   earningsMap.set(firstEarningYear, firstYearEarnings);
   earningsMap.set(currentYear, currentAnnualIncome);
   
-  // Starting values
+  // Starting values at 0
   let runningTotalSavings = 0;
   let runningTotalInvestments = 0;
   
@@ -119,11 +119,31 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
     });
   }
   
-  // Adjust final values to match current values
+  // Calculate growth factors to adjust final values to match current values
+  // This distributes any difference between calculated and actual values proportionally
   const lastIndex = pastProjections.length - 1;
   if (lastIndex >= 0) {
-    pastProjections[lastIndex].savings = currentSavings;
-    pastProjections[lastIndex].investments = currentInvestments;
+    const calculatedSavings = pastProjections[lastIndex].savings;
+    const calculatedInvestments = pastProjections[lastIndex].investments;
+    
+    // Only adjust if there's a significant difference
+    if (Math.abs(calculatedSavings - currentSavings) > 0.01) {
+      const savingsRatio = calculatedSavings > 0 ? currentSavings / calculatedSavings : 1;
+      
+      // Apply adjustment factor to all past savings values
+      pastProjections.forEach(entry => {
+        entry.savings *= savingsRatio;
+      });
+    }
+    
+    if (Math.abs(calculatedInvestments - currentInvestments) > 0.01) {
+      const investmentsRatio = calculatedInvestments > 0 ? currentInvestments / calculatedInvestments : 1;
+      
+      // Apply adjustment factor to all past investment values
+      pastProjections.forEach(entry => {
+        entry.investments *= investmentsRatio;
+      });
+    }
   }
   
   return pastProjections;
