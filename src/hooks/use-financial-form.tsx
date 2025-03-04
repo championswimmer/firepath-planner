@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { FinancialData } from '@/types';
 import { validateAllocationPercentages } from '@/utils/financialCalculations';
@@ -102,7 +103,7 @@ export const useFinancialForm = (onSubmit: (data: FinancialData) => void) => {
   // Handle allocation slider changes with validation
   const handleAllocationChange = (name: string, value: number[]) => {
     const newValue = value[0];
-    const change = newValue - formData[name as keyof FinancialData] as number;
+    const change = newValue - (formData[name as keyof typeof formData] as number);
     
     // Update the named percentage
     setFormData(prev => ({
