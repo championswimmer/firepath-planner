@@ -80,7 +80,7 @@ const FinancialForm: React.FC<FinancialFormProps> = ({ onSubmit }) => {
     
     // Convert to number for numerical fields
     if (name !== 'name') {
-      parsedValue = value === '' ? 0 : parseFloat(value);
+      parsedValue = value === '' ? 0 : Number(parseFloat(value));
     }
     
     setFormData(prev => ({

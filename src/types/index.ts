@@ -29,6 +29,7 @@ export interface ProjectionData {
   income: number;
   savings: number;
   investments: number;
+  spending?: number; // Add optional spending for detailed reports
 }
 
 export interface ChartData {

@@ -31,7 +31,8 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
     currentSavings,
     currentInvestments,
     savingsPercentage,
-    investmentPercentage
+    investmentPercentage,
+    spendPercentage
   } = data;
   
   const pastProjections: ProjectionData[] = [];
@@ -69,7 +70,8 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
                     ((year - prevYear) / (nextYear - prevYear));
     }
     
-    // Calculate savings and investments for the year
+    // Calculate allocation amounts for the year
+    const yearlySpending = yearlyIncome * (spendPercentage / 100);
     const yearlySavings = yearlyIncome * (savingsPercentage / 100);
     const yearlyInvestments = yearlyIncome * (investmentPercentage / 100);
     
@@ -79,15 +81,41 @@ const generatePastProjections = (data: FinancialData, currentYear: number): Proj
       runningTotalInvestments = runningTotalInvestments * (1 + data.investmentsGrowthRate / 100);
     }
     
-    // Add this year's contributions
+    // Handle spending - first reduce from savings
+    let remainingSpending = yearlySpending;
+    
+    // Add this year's savings contribution
     runningTotalSavings += yearlySavings;
+    
+    // Subtract spending from savings
+    if (runningTotalSavings >= remainingSpending) {
+      runningTotalSavings -= remainingSpending;
+      remainingSpending = 0;
+    } else {
+      // If savings can't cover all spending, calculate remaining
+      remainingSpending -= runningTotalSavings;
+      runningTotalSavings = 0;
+    }
+    
+    // Add this year's investment contribution
     runningTotalInvestments += yearlyInvestments;
+    
+    // If there's still spending to cover, take from investments
+    if (remainingSpending > 0) {
+      if (runningTotalInvestments >= remainingSpending) {
+        runningTotalInvestments -= remainingSpending;
+      } else {
+        // If investments can't cover all remaining spending, set to 0
+        runningTotalInvestments = 0;
+      }
+    }
     
     pastProjections.push({
       year,
       income: yearlyIncome,
       savings: runningTotalSavings,
-      investments: runningTotalInvestments
+      investments: runningTotalInvestments,
+      spending: yearlySpending
     });
   }
   
@@ -118,6 +146,7 @@ const generateFutureProjections = (
     investmentsGrowthRate,
     savingsPercentage,
     investmentPercentage,
+    spendPercentage,
     inflationRate
   } = data;
   
@@ -132,23 +161,52 @@ const generateFutureProjections = (
   for (let yearOffset = 1; yearOffset <= projectionYears; yearOffset++) {
     const year = currentYear + yearOffset;
     
+    // Initialize spending for this year
+    let yearlySpending = 0;
+    let yearlySavings = 0;
+    let yearlyInvestments = 0;
+    
     // Income stops after 20 years, but continue projecting savings and investments
     if (yearOffset <= incomeProjectionYears) {
       // Growth-adjusted income
       runningIncome = runningIncome * (1 + incomeGrowthRate / 100);
       
-      // Calculate this year's contributions
-      const yearlySavings = runningIncome * (savingsPercentage / 100);
-      const yearlyInvestments = runningIncome * (investmentPercentage / 100);
-      
-      // Apply growth to running totals
-      runningSavings = runningSavings * (1 + savingsGrowthRate / 100) + yearlySavings;
-      runningInvestments = runningInvestments * (1 + investmentsGrowthRate / 100) + yearlyInvestments;
+      // Calculate this year's allocations
+      yearlySpending = runningIncome * (spendPercentage / 100);
+      yearlySavings = runningIncome * (savingsPercentage / 100);
+      yearlyInvestments = runningIncome * (investmentPercentage / 100);
+    }
+    
+    // Apply growth to running totals
+    runningSavings = runningSavings * (1 + savingsGrowthRate / 100);
+    runningInvestments = runningInvestments * (1 + investmentsGrowthRate / 100);
+    
+    // Add this year's contributions
+    runningSavings += yearlySavings;
+    
+    // Handle spending - first reduce from savings
+    let remainingSpending = yearlySpending;
+    
+    if (runningSavings >= remainingSpending) {
+      runningSavings -= remainingSpending;
+      remainingSpending = 0;
     } else {
-      // After income ends, just apply growth rates
-      runningSavings = runningSavings * (1 + savingsGrowthRate / 100);
-      runningInvestments = runningInvestments * (1 + investmentsGrowthRate / 100);
-      runningIncome = 0;
+      // If savings can't cover all spending, calculate remaining
+      remainingSpending -= runningSavings;
+      runningSavings = 0;
+    }
+    
+    // Add this year's investment contribution
+    runningInvestments += yearlyInvestments;
+    
+    // If there's still spending to cover, take from investments
+    if (remainingSpending > 0) {
+      if (runningInvestments >= remainingSpending) {
+        runningInvestments -= remainingSpending;
+      } else {
+        // If investments can't cover all remaining spending, set to 0
+        runningInvestments = 0;
+      }
     }
     
     // Apply inflation adjustment to all values
@@ -156,12 +214,14 @@ const generateFutureProjections = (
     const inflationAdjustedIncome = runningIncome * inflationFactor;
     const inflationAdjustedSavings = runningSavings * inflationFactor;
     const inflationAdjustedInvestments = runningInvestments * inflationFactor;
+    const inflationAdjustedSpending = yearlySpending * inflationFactor;
     
     futureProjections.push({
       year,
       income: inflationAdjustedIncome,
       savings: inflationAdjustedSavings,
-      investments: inflationAdjustedInvestments
+      investments: inflationAdjustedInvestments,
+      spending: inflationAdjustedSpending
     });
   }
   
